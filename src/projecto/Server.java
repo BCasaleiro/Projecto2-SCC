@@ -35,22 +35,81 @@ final class Arrival extends Event {
 	}
 	@Override
 	public void execute() {
+            double n = new Discrete(1, new double[]{1, 2, 3, 4}, new double[]{0.5, 0.3, 0.1, 0.1}).next();
+            int route;
+            for (int i = 0; i < n; i++) {
+                Token client = new Token(time);
+                route = (int) new Discrete(1, new double[]{1, 2, 3}, new double[]{0.8, 0.15, 0.05}).next();
+                
+                switch(route) {
+                    case 1:
+                        if (model.restHotFood.value() > 0) {
+                                model.restHotFood.inc(-1, time);
+                                model.schedule(new DepartureHotFood(model, client), model.stHotFood.next());
+                        }
+                        else {
+                                model.queueHotFood.inc(1, time);
+                                model.lineHotFood.add(client);
+                        }
+                        break;
+                    case 2:
+                        if (model.restSandwich.value() > 0) {
+                                model.restSandwich.inc(-1, time);
+                                model.schedule(new DepartureSandwich(model, client), model.stSandwich.next());
+                        }
+                        else {
+                                model.queueSandwich.inc(1, time);
+                                model.lineSandwich.add(client);
+                        }
+                        break;
+                    case 3:
+                        model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
+                        break;
+                    default:
+                        System.out.println("ERRO");
+                }
+            }
+            
 		Token client = new Token(time);
-		if (model.rest.value() > 0) {
-			model.rest.inc(-1, time);
-			model.schedule(new Departure(model, client), model.service.next());
-		}
-		else {
-			model.queue.inc(1, time);
-			model.line.add(client);
-		}
 		model.schedule(this, model.arrival.next());
 	}
 }
 
-final class Departure extends Event {
+final class DepartureHotFood extends Event {
 	private final Server model;
-	public Departure(Server model, Token client) {
+	public DepartureHotFood(Server model, Token client) {
+		super();
+		this.model = model;
+		this.client = client;
+	}
+	private Token client = null;
+	@Override
+	public void execute() {
+            System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            model.actSandwich.next();
+            model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
+        }
+}
+
+final class DepartureSandwich extends Event {
+	private final Server model;
+	public DepartureSandwich(Server model, Token client) {
+		super();
+		this.model = model;
+		this.client = client;
+	}
+	private Token client = null;
+	@Override
+	public void execute() {
+            System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            model.actSandwich.next();
+            model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
+        }
+}
+
+final class DepartureDrinks extends Event {
+	private final Server model;
+	public DepartureDrinks(Server model, Token client) {
 		super();
 		this.model = model;
 		this.client = client;
@@ -59,15 +118,15 @@ final class Departure extends Event {
 	@Override
 	public void execute() {
 		System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
-		if (model.queue.value() > 0) {
-			model.queue.inc(-1, time);
-			client = model.line.remove(0);
+		if (model.queueSandwich.value() > 0) {
+			model.queueSandwich.inc(-1, time);
+			client = model.lineSandwich.remove(0);
 			client.serviceTick(time);
-			model.delayTime.add(client.waitTime());
-			model.schedule(this, model.service.next());
+			model.delayTimeSandwich.add(client.waitTime());
+			model.schedule(this, model.stSandwich.next());
 		}
 		else {
-			model.rest.inc(1, time);
+			model.restSandwich.inc(1, time);
 		}
 	}
 }
@@ -89,28 +148,68 @@ final class Stop extends Event {
 }
 
 final class Server extends Model {
-	final Accumulate queue;
-	final Accumulate rest;
-	final RandomStream service;
-	final RandomStream arrival;
-	final List<Token> line;
-	final Average delayTime;
+    
+	final Accumulate queueHotFood;
+        final Accumulate restHotFood;
+        final Average delayTimeHotFood;
+        final List<Token> lineHotFood;
+        final Uniform stHotFood;
+        final Uniform actHotFood;
+        
+        final Accumulate queueSandwich;
+        final Accumulate restSandwich;
+        final Average delayTimeSandwich;
+        final List<Token> lineSandwich;
+        final Uniform stSandwich;
+        final Uniform actSandwich;
+        
+        final Uniform stDrinks;
+        final Uniform actDrinks;
+        
+        final Accumulate queueCashier;
+        final Accumulate restCashier;
+        final Average delayTimeCashier;
+        final List<Token> lineCashier;
+        final Uniform stCashier;
+        final Uniform actCashier;
+        
+        final Exponential arrival;
+        
 	public Server(int n) {
 		super();
-		this.queue = new Accumulate(0);
-		this.rest = new Accumulate(n);
-		this.line = new ArrayList<>();
-		this.delayTime = new Average();
-		double[] A = new double[]{0.4, 1.2, 0.5, 1.7, 0.2, 1.6, 0.2, 1.4, 1.9, 2.7, 0.5};
-		double[] S = new double[]{2.0, 0.7, 0.2, 1.1, 3.7, 0.6, 0.9, 1.3, 1.1, 1.8, 0.8};
-		arrival = new Sequence(A);
-		service = new Sequence(S);
+		this.queueHotFood = new Accumulate(0);
+		this.restHotFood = new Accumulate(n);
+                this.delayTimeHotFood = new Average();
+		this.lineHotFood = new ArrayList<>();
+                this.stHotFood = new Uniform(1, 50,120);
+                this.actHotFood = new Uniform(1, 20, 40);
+                
+                this.queueSandwich = new Accumulate(0);
+		this.restSandwich = new Accumulate(n);
+                this.delayTimeSandwich = new Average();
+		this.lineSandwich = new ArrayList<>();
+                this.stSandwich = new Uniform(1, 60,180);
+                this.actSandwich = new Uniform(1, 5, 15);
+                
+                this.stDrinks = new Uniform(1, 5, 20);
+                this.actDrinks = new Uniform(1, 5, 10);
+                
+                this.queueCashier = new Accumulate(0);
+		this.restCashier = new Accumulate(n);
+                this.delayTimeCashier = new Average();
+		this.lineCashier = new ArrayList<>();
+                this.stCashier = new Uniform(1, 50,120);
+                this.actCashier = new Uniform(1, 20, 40);
+                
+		arrival = new Exponential(1, 30);
 	}
+        
 	@Override
 	protected void init() {
 		schedule(new Arrival(this), arrival.next());
-		schedule(new Stop(this), 9);
+		schedule(new Stop(this), 5400);
 	}
-	@Override
-	public String toString() {return "" + queue.value() + " " + rest.value();}
+	
+        //@Override
+	//public String toString() {return "" + queue.value() + " " + rest.value();}
 }
