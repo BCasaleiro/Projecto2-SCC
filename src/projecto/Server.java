@@ -14,6 +14,9 @@ class Token {
 	private double arrivalTick;
 	private double serviceTick;
 	private double endTick;
+        
+        private double actTick;
+        
 	public Token(double arrivalTick) {this.arrivalTick = this.serviceTick = arrivalTick;}
 	public double waitTime() {return serviceTick - arrivalTick;}
 	public double cycleTime(double time) {return time - arrivalTick;}
@@ -23,6 +26,15 @@ class Token {
 	public double serviceTick() {return serviceTick;}
 	public void serviceTick(double serviceTick) {this.serviceTick = serviceTick;}
 	public void endTick(double endTick) {this.endTick = endTick;}
+        
+        public double getActTick() {
+		return actTick;
+	}
+
+	public void incActTick(double actTick) {
+		this.actTick += actTick;
+	}
+        
 	@Override
 	public String toString() {return String.format("[%.2f]", arrivalTick);}
 }
@@ -33,15 +45,19 @@ final class Arrival extends Event {
 		super();
 		this.model = model;
 	}
+        
 	@Override
 	public void execute() {
             double n = new Discrete(1, new double[]{1, 2, 3, 4}, new double[]{0.5, 0.3, 0.1, 0.1}).next();
-            int route;
+            Discrete route = new Discrete(1, new double[]{1, 2, 3}, new double[]{0.8, 0.15, 0.05});
+            int rot;
+            //System.out.println("Tamanho do grupo: " + n);
             for (int i = 0; i < n; i++) {
                 Token client = new Token(time);
-                route = (int) new Discrete(1, new double[]{1, 2, 3}, new double[]{0.8, 0.15, 0.05}).next();
+                rot = (int)route.next();
+                System.out.println("Rota: " + rot);
                 
-                switch(route) {
+                switch(rot) {
                     case 1:
                         if (model.restHotFood.value() > 0) {
                                 model.restHotFood.inc(-1, time);
@@ -85,9 +101,21 @@ final class DepartureHotFood extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
-            model.actSandwich.next();
+            //System.out.println("DepartureHotFood");
+            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            client.incActTick(model.actHotFood.next());
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
+            
+            if (model.queueHotFood.value() > 0) {
+			model.queueHotFood.inc(-1, time);
+			client = model.lineHotFood.remove(0);
+			client.serviceTick(time);
+			model.delayTimeHotFood.add(client.waitTime());
+			model.schedule(this, model.stHotFood.next());
+		}
+		else {
+			model.restHotFood.inc(1, time);
+		}
         }
 }
 
@@ -101,9 +129,20 @@ final class DepartureSandwich extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
-            model.actSandwich.next();
+            //System.out.println("DepartureSandwich");
+            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            client.incActTick(model.actSandwich.next());
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
+            
+            if (model.queueSandwich.value() > 0) {
+                    model.queueSandwich.inc(-1, time);
+                    client = model.lineSandwich.remove(0);
+                    client.serviceTick(time);
+                    model.delayTimeSandwich.add(client.waitTime());
+                    model.schedule(this, model.stSandwich.next());
+		} else {
+                    model.restSandwich.inc(1, time);
+		}
         }
 }
 
@@ -117,17 +156,40 @@ final class DepartureDrinks extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-		System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
-		if (model.queueSandwich.value() > 0) {
-			model.queueSandwich.inc(-1, time);
-			client = model.lineSandwich.remove(0);
-			client.serviceTick(time);
-			model.delayTimeSandwich.add(client.waitTime());
-			model.schedule(this, model.stSandwich.next());
-		}
-		else {
-			model.restSandwich.inc(1, time);
-		}
+            //System.out.println("DepartureDrinks");
+            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            if (model.restCashier.value() > 0) {
+                model.restCashier.inc(-1, time);
+                client.incActTick(model.actDrinks.next());
+                model.schedule(new DepartureCashier(model, client), client.getActTick());
+            } else {
+                model.queueCashier.inc(1, time);
+                model.lineCashier.add(client);
+            }
+	}
+}
+
+final class DepartureCashier extends Event {
+	private final Server model;
+	public DepartureCashier(Server model, Token client) {
+		super();
+		this.model = model;
+		this.client = client;
+	}
+	private Token client = null;
+	@Override
+	public void execute() {
+            //System.out.println("DepartureCashier");
+            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            if (model.queueCashier.value() > 0) {
+		model.queueCashier.inc(-1, time);
+		client = model.lineCashier.remove(0);
+		client.serviceTick(time);
+		model.delayTimeCashier.add(client.waitTime());
+                model.schedule(this, client.getActTick());
+            } else {
+                model.restCashier.inc(1, time);
+            }
 	}
 }
 
@@ -139,10 +201,9 @@ final class Stop extends Event {
 	}
 	@Override
 	public void execute() {
-		System.out.format("%.2f\t%.2f\t%.2f\n",
-			model.queue.mean(time),
-			model.rest.mean(time), model.delayTime.mean()
-		);
+		System.out.println("Hot Food:\tqueue: " + model.queueHotFood.mean(time) + "\trest: " + model.restHotFood.mean(time) + "\tdelay: " + model.delayTimeHotFood.mean());
+                System.out.println("Sandwich:\tqueue: " + model.queueSandwich.mean(time) + "\trest: " + model.restSandwich.mean(time) + "\tdelay: " + model.delayTimeSandwich.mean());
+                System.out.println("Cashier:\tqueue: " + model.queueCashier.mean(time) + "\trest: " + model.restCashier.mean(time) + "\tdelay: " + model.delayTimeCashier.mean());
 		model.clear();
 	}
 }
@@ -210,6 +271,6 @@ final class Server extends Model {
 		schedule(new Stop(this), 5400);
 	}
 	
-        //@Override
-	//public String toString() {return "" + queue.value() + " " + rest.value();}
+        @Override
+	public String toString() {return "" + queueHotFood.value() + " " + restHotFood.value();}
 }

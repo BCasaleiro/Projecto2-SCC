@@ -6,6 +6,9 @@ public class Simulation {
     }
     
     public void start() {
-        
+        Model model = new Server(1);
+	Simulator simulator = new Simulator(model);
+	model.simulator(simulator);
+	simulator.run();
     }
 }
