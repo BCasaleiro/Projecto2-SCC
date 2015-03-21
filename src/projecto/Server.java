@@ -235,9 +235,9 @@ final class Stop extends Event {
 	}
 	@Override
 	public void execute() {
-		System.out.println("Hot Food:\tqueue: " + model.queueHotFood.mean(time) + "\trest: " + model.restHotFood.mean(time) + "\tdelay: " + model.delayTimeHotFood.mean());
-                System.out.println("Sandwich:\tqueue: " + model.queueSandwich.mean(time) + "\trest: " + model.restSandwich.mean(time) + "\tdelay: " + model.delayTimeSandwich.mean());
-                System.out.println("Cashier:\tqueue: " + model.queueCashier.mean(time) + "\trest: " + model.restCashier.mean(time) + "\tdelay: " + model.delayTimeCashier.mean());
+		System.out.println("Hot Food:\tqueue: " + model.queueHotFood.mean(time) + "\trest: " + model.restHotFood.mean(time) + "\tdelay: " + model.delayTimeHotFood.mean() + "\tMax delay: " + model.delayTimeHotFood.getMax());
+                System.out.println("Sandwich:\tqueue: " + model.queueSandwich.mean(time) + "\trest: " + model.restSandwich.mean(time) + "\tdelay: " + model.delayTimeSandwich.mean() + "\tMax delay: " + model.delayTimeSandwich.getMax());
+                System.out.println("Cashier:\tqueue: " + model.queueCashier.mean(time) + "\trest: " + model.restCashier.mean(time) + "\tdelay: " + model.delayTimeCashier.mean() + "\tMax delay: " + model.delayTimeCashier.getMax());
 		model.clear();
 	}
 }
@@ -261,9 +261,6 @@ final class Server extends Model {
         final Uniform stDrinks;
         final Uniform actDrinks;
         
-        //final List<Accumulate> queueCashier;
-        //final List<Accumulate> restCashier;
-        //final List<Average> delayTimeCashier;
         final List<List<Token>> lineCashier;
         final Uniform stCashier;
         final Uniform actCashier;
@@ -296,21 +293,13 @@ final class Server extends Model {
                 this.stDrinks = new Uniform(1, 5, 20);
                 this.actDrinks = new Uniform(1, 5, 10);
                 
-                
-                
-                //this.queueCashier = new ArrayList<>();
                 this.lineCashier = new ArrayList<>();
-                //this.restCashier = new ArrayList<>();
-		//this.delayTimeCashier = new ArrayList<>();
                 
                 this.queueCashier = new Accumulate(0);
                 this.restCashier = new Accumulate(nCashiers);
                 this.delayTimeCashier = new Average();
                 
                 for(int i = 0; i < nCashiers; i++){
-                    //this.queueCashier.add(new Accumulate(0));
-                    //this.restCashier.add(new Accumulate(nCashiers));
-                    //this.delayTimeCashier.add(new Average());
                     this.lineCashier.add(new ArrayList<>());
                 }
                 this.stCashier = new Uniform(1, 50,120);
