@@ -48,10 +48,10 @@ final class Arrival extends Event {
         
 	@Override
 	public void execute() {
-            double n = new Discrete(1, new double[]{1, 2, 3, 4}, new double[]{0.5, 0.3, 0.1, 0.1}).next();
-            Discrete route = new Discrete(1, new double[]{1, 2, 3}, new double[]{0.8, 0.15, 0.05});
+            double n = new Discrete((int)time, new double[]{1.0, 2.0, 3.0, 4.0}, new double[]{0.5, 0.3, 0.1, 0.1}).next();
+            Discrete route = new Discrete((int)time, new double[]{1.0, 2.0, 3.0}, new double[]{0.8, 0.15, 0.05});
             int rot;
-            //System.out.println("Tamanho do grupo: " + n);
+            System.out.println("Tamanho do grupo: " + n);
             for (int i = 0; i < n; i++) {
                 Token client = new Token(time);
                 rot = (int)route.next();
@@ -101,8 +101,7 @@ final class DepartureHotFood extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            //System.out.println("DepartureHotFood");
-            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            System.out.format("DepartureHotFood: %.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
             client.incActTick(model.actHotFood.next());
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
             
@@ -129,8 +128,7 @@ final class DepartureSandwich extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            //System.out.println("DepartureSandwich");
-            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            System.out.format("DepartureSandwich: %.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
             client.incActTick(model.actSandwich.next());
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
             
@@ -156,8 +154,7 @@ final class DepartureDrinks extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            //System.out.println("DepartureDrinks");
-            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            System.out.format("DepartureDrinks: %.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
             if (model.restCashier.value() > 0) {
                 model.restCashier.inc(-1, time);
                 client.incActTick(model.actDrinks.next());
@@ -179,8 +176,7 @@ final class DepartureCashier extends Event {
 	private Token client = null;
 	@Override
 	public void execute() {
-            //System.out.println("DepartureCashier");
-            //System.out.format("%.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
+            System.out.format("DepartureCashier: %.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
             if (model.queueCashier.value() > 0) {
 		model.queueCashier.inc(-1, time);
 		client = model.lineCashier.remove(0);
@@ -236,20 +232,20 @@ final class Server extends Model {
         
         final Exponential arrival;
         
-	public Server(int n) {
+	public Server(int n, int nWorkersHotFood, int nWorkersSandwich, int nCashiers) {
 		super();
 		this.queueHotFood = new Accumulate(0);
 		this.restHotFood = new Accumulate(n);
                 this.delayTimeHotFood = new Average();
 		this.lineHotFood = new ArrayList<>();
-                this.stHotFood = new Uniform(1, 50,120);
+                this.stHotFood = new Uniform(1, 50/nWorkersHotFood,120/nWorkersHotFood);
                 this.actHotFood = new Uniform(1, 20, 40);
                 
                 this.queueSandwich = new Accumulate(0);
 		this.restSandwich = new Accumulate(n);
                 this.delayTimeSandwich = new Average();
 		this.lineSandwich = new ArrayList<>();
-                this.stSandwich = new Uniform(1, 60,180);
+                this.stSandwich = new Uniform(1, 60/nWorkersHotFood,180/nWorkersHotFood);
                 this.actSandwich = new Uniform(1, 5, 15);
                 
                 this.stDrinks = new Uniform(1, 5, 20);
