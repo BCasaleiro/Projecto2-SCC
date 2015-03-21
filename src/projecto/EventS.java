@@ -83,11 +83,19 @@ class Exponential extends Uniform01 {
 }
 
 class Accumulate {
+    private int max = 0;
 	private int value = 0;
 	private double accum = 0.0;
 	private double last = 0.0;
 	public Accumulate(int value) {this.value = value;}
-	public void inc(int d, double time) {set(value + d, time);}
+	public void inc(int d, double time) {
+            
+            set(value + d, time);
+            
+            if(value > max){
+                max = value;
+            }
+        }
 	public void set(int v, double time) {
 		double delta = time - last;
 		accum += value * delta;
@@ -102,6 +110,16 @@ class Accumulate {
 		return accum;
 	}
 	public int value() {return value;}
+
+    public int getMax() {
+        return max;
+    }
+
+    public void setMax(int max) {
+        this.max = max;
+    }
+        
+        
 	@Override
 	public String toString() {return "" + value + " " + accum + " " + last;}
 }

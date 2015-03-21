@@ -121,6 +121,7 @@ final class DepartureHotFood extends Event {
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
             
             if (model.queueHotFood.value() > 0) {
+                model.hf++;
                 model.queueHotFood.inc(-1, time);
                 client = model.lineHotFood.remove(0);
 		client.serviceTick(time);
@@ -147,6 +148,7 @@ final class DepartureSandwich extends Event {
             model.schedule(new DepartureDrinks(model, client), model.stDrinks.next());
             
             if (model.queueSandwich.value() > 0) {
+                model.sw++;
                     model.queueSandwich.inc(-1, time);
                     client = model.lineSandwich.remove(0);
                     client.serviceTick(time);
@@ -171,6 +173,7 @@ final class DepartureDrinks extends Event {
 	public void execute() {
             System.out.format("Id: " + client.id_tk  +"\tDepartureDrinks: %.2f\t%.2f\t%.2f\n", client.arrivalTick(), client.serviceTick(), time);
             if (model.restCashier.value() > 0) {
+                model.dk++;
                 indexMin = 0;
                 model.restCashier.inc(-1, time);
                 client.incActTick(model.actDrinks.next());
@@ -235,15 +238,17 @@ final class Stop extends Event {
 	}
 	@Override
 	public void execute() {
-		System.out.println("Hot Food:\tqueue: " + model.queueHotFood.mean(time) + "\trest: " + model.restHotFood.mean(time) + "\tdelay: " + model.delayTimeHotFood.mean() + "\tMax delay: " + model.delayTimeHotFood.getMax());
-                System.out.println("Sandwich:\tqueue: " + model.queueSandwich.mean(time) + "\trest: " + model.restSandwich.mean(time) + "\tdelay: " + model.delayTimeSandwich.mean() + "\tMax delay: " + model.delayTimeSandwich.getMax());
-                System.out.println("Cashier:\tqueue: " + model.queueCashier.mean(time) + "\trest: " + model.restCashier.mean(time) + "\tdelay: " + model.delayTimeCashier.mean() + "\tMax delay: " + model.delayTimeCashier.getMax());
+		System.out.println("Hot Food:\tqueue: " + model.queueHotFood.mean(time) + "\trest: " + model.restHotFood.mean(time) + "\tdelay: " + model.delayTimeHotFood.mean() + "\tMax delay: " + model.delayTimeHotFood.getMax() + "\tcostumers: " + model.hf + "\tmax queue: " + model.queueHotFood.getMax());
+                System.out.println("Sandwich:\tqueue: " + model.queueSandwich.mean(time) + "\trest: " + model.restSandwich.mean(time) + "\tdelay: " + model.delayTimeSandwich.mean() + "\tMax delay: " + model.delayTimeSandwich.getMax() + "\tcostumers: " + model.sw + "\tmax queue: " + model.queueSandwich.getMax());
+                System.out.println("Cashier:\tqueue: " + model.queueCashier.mean(time) + "\trest: " + model.restCashier.mean(time) + "\tdelay: " + model.delayTimeCashier.mean() + "\tMax delay: " + model.delayTimeCashier.getMax() + "\tcostumers: " + model.dk + "\tmax queue: " + model.queueCashier.getMax());
 		model.clear();
 	}
 }
 
 final class Server extends Model {
-    
+        static int hf = 0;
+        static int dk = 0;
+        static int sw = 0;
 	final Accumulate queueHotFood;
         final Accumulate restHotFood;
         final Average delayTimeHotFood;
